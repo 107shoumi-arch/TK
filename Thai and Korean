@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyglot Master v3.0 | 終極完整版</title>
+    <style>
+        :root {
+            --bg-main: #121212;
+            --bg-panel: #1e1e1e;
+            --bg-modal: #252525;
+            --text-main: #e0e0e0;
+            --text-mute: #9e9e9e;
+            --accent: #00e5ff;
+            --c-th: #ba68c8; 
+            --c-kr: #64b5f6;
+            --c-vocab: #69f0ae;
+            --border: #333;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* 優化 iPhone 字體 */
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            height: 100vh; /* 視窗高度 */
+            height: 100dvh; /* iPhone 專用動態高度修正 */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            /* iPhone 劉海避讓設定 */
+            padding-top: max(15px, env(safe-area-inset-top)); 
+            padding-bottom: 15px;
+            padding-left: 20px;
+            padding-right: 20px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            z-index: 10; /* 確保在最上層 */
+        }
+        h1 { margin: 0; font-size: 1.1rem; color: var(--accent); letter-spacing: 1px; }
+        
+        .tabs { display: flex; gap: 10px; }
+        .tab-btn {
+            padding: 6px 15px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-mute);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem; /* 手機字體微調 */
+            transition: 0.3s;
+            white-space: nowrap; /* 防止按鈕文字換行 */
+        }
+        .tab-btn.active { background: #333; color: white; border-color: #666; }
+
+        .container {
+            flex: 1;
+            padding: 20px;
+            /* 避開底部 Home Indicator */
+            padding-bottom: calc(20px + env(safe-area-inset-bottom)); 
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* iPhone 捲動慣性優化 */
+            display: none;
+        }
+        .container.active { display: block; }
+
+        .intro-box {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--text-mute);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .grid-section-title {
+            margin: 30px 0 15px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #333;
+            color: var(--text-main);
+            font-size: 1.2rem;
+        }
+
+        .grid {
+            display: grid;
+            /* 手機版最小寬度設為 75px，確保一行能放 4 個 */
+            grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+            gap: 10px;
+        }
+        .card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px; /* 圓角大一點比較像 iOS */
+            height: 85px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+            /* iOS 點擊反白效果移除 */
+            -webkit-tap-highlight-color: transparent; 
+        }
+        .card:active { transform: scale(0.96); background: #333; } /* 手機按壓回饋 */
+        
+        .card-char { font-size: 1.8rem; margin-bottom: 2px; font-weight: bold; }
+        .card-rom { font-size: 0.7rem; color: var(--text-mute); text-transform: uppercase; }
+        
+        .th-mid .card-char { color: #4caf50; }
+        .th-high .card-char { color: #ff9800; }
+        .th-low .card-char { color: #2196f3; }
+        .th-vowel .card-char { color: #e91e63; }
+        
+        .kr-base .card-char { color: #90caf9; }
+        .kr-asp .card-char { color: #ce93d8; }
+        .kr-tense .card-char { color: #ef9a9a; }
+        .kr-vowel .card-char { color: #fff59d; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85); /* 背後稍微透一點 */
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: flex-end; /* 手機版讓選單從下面滑上來更有感，或者置中 */
+            backdrop-filter: blur(8px); /* iPhone 毛玻璃效果 */
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        /* 手機版 Modal 置中 */
+        @media (min-width: 600px) {
+            .modal-overlay { align-items: center; }
+        }
+
+        .modal-content {
+            background: var(--bg-modal);
+            width: 100%; /* 手機版全寬 */
+            max-width: 550px;
+            max-height: 85vh; /* 視窗 85% 高度 */
+            border-radius: 20px 20px 0 0; /* 上方圓角 */
+            border: 1px solid var(--border);
+            padding: 25px;
+            position: relative;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+            overflow-y: auto;
+            /* iPhone 底部避讓 */
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+        }
+
+        /* 電腦版 Modal 變回圓角懸浮 */
+        @media (min-width: 600px) {
+            .modal-content {
+                width: 90%;
+                border-radius: 16px;
+                padding-bottom: 25px;
+            }
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px; right: 20px;
+            font-size: 2rem; cursor: pointer; color: var(--text-mute);
+            z-index: 10;
+        }
+
+        .m-header { display: flex; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+        .m-big-char { font-size: 3.5rem; margin-right: 20px; font-weight: bold; }
+        .m-title { font-size: 1.3rem; margin: 0; }
+        .m-subtitle { color: var(--text-mute); margin: 5px 0 0 0; font-size: 0.9rem; }
+
+        .section-label {
+            font-size: 0.8rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+            margin-top: 20px;
+            display: block;
+            font-weight: bold;
+            border-left: 3px solid var(--accent);
+            padding-left: 8px;
+        }
+
+        .memory-box {
+            background: rgba(255, 255, 0, 0.05);
+            border: 1px dashed #666;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            color: #fff9c4;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .combo-row {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+        .combo-part { color: var(--text-mute); margin: 0 8px; }
+        .combo-result { color: var(--accent); font-weight: bold; margin-left: auto; font-size: 1.3rem; }
+        .combo-desc { font-size: 0.8rem; color: #888; margin-left: 8px; font-family: sans-serif;}
+
+        /* 單字列表：手機一行一個，電腦一行兩個 */
+        .vocab-list { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        @media (min-width: 500px) {
+            .vocab-list { grid-template-columns: 1fr 1fr; }
+        }
+
+        .vocab-item {
+            background: var(--bg-panel);
+            border: 1px solid #333;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between; /* 讓圖示靠右 */
+            align-items: center;
+        }
+        .vocab-item:active { background: #333; transform: scale(0.98); }
+        
+        .v-text-group { display: flex; flex-direction: column; }
+        .v-word { font-size: 1.1rem; font-weight: bold; margin-bottom: 3px; color: var(--text-main); }
+        .v-mean { font-size: 0.8rem; color: var(--text-mute); }
+        .v-icon { font-size: 1.2rem; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Polyglot Master v3.0</h1>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="setLang('th')">🇹🇭 泰語全集</button>
+            <button class="tab-btn" onclick="setLang('kr')">🇰🇷 韓語全集</button>
+        </div>
+    </header>
+
+    <div id="th-area" class="container active">
+        <div class="intro-box">
+            <strong>泰語提示：</strong> <br>
+            <span style="color:#4caf50">● 中子音 (平)</span> / 
+            <span style="color:#ff9800">● 高子音 (上揚)</span> / 
+            <span style="color:#2196f3">● 低子音 (流動)</span> / 
+            <span style="color:#e91e63">● 母音</span>
+        </div>
+        
+        <div class="grid-section-title">中子音 (Mid Class)</div>
+        <div class="grid" id="th-mid-grid"></div>
+        
+        <div class="grid-section-title">高子音 (High Class)</div>
+        <div class="grid" id="th-high-grid"></div>
+        
+        <div class="grid-section-title">低子音 (Low Class)</div>
+        <div class="grid" id="th-low-grid"></div>
+
+        <div class="grid-section-title">母音 (Vowels)</div>
+        <div class="grid" id="th-vowel-grid"></div>
+    </div>
+
+    <div id="kr-area" class="container">
+        <div class="intro-box">
+            <strong>韓語提示：</strong> <br>
+            <span style="color:#90caf9">● 平音</span> / 
+            <span style="color:#ce93d8">● 激音 (噴氣)</span> / 
+            <span style="color:#ef9a9a">● 緊音 (硬)</span> / 
+            <span style="color:#fff59d">● 母音</span>
+        </div>
+
+        <div class="grid-section-title">子音 (Consonants)</div>
+        <div class="grid" id="kr-cons-grid"></div>
+
+        <div class="grid-section-title">母音 (Vowels)</div>
+        <div class="grid" id="kr-vowel-grid"></div>
+    </div>
+
+    <div class="modal-overlay" id="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-btn" onclick="closeModal()">×</span>
+
+            <div class="m-header">
+                <div class="m-big-char" id="m-char"></div>
+                <div>
+                    <h2 class="m-title" id="m-name"></h2>
+                    <p class="m-subtitle" id="m-type"></p>
+                </div>
+            </div>
+
+            <span class="section-label">🧠 記憶技巧</span>
+            <div class="memory-box" id="m-memo"></div>
+
+            <span class="section-label" id="label-combo">🏗️ 組合邏輯 (Math)</span>
+            <div id="m-combo-list"></div>
+
+            <span class="section-label">💬 實戰單字 (點擊發音)</span>
+            <div class="vocab-list" id="m-vocab-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 資料庫 (合併了完整字母表 + 組合邏輯)
+        // ==========================================
+        const DB = {
+            th: {
+                // 為了方便，這裡將子音分為三類陣列
+                mid: [
+                    { char: "ก", rom: "k/g", name: "Ko Kai (雞)", memo: "雞嘴喙向左。中子音發音平。", 
+                      combos: [{v:"-า", ex:"ก + า", res:"กา", desc:"烏鴉"}, {v:"-ี", ex:"ก + -ี", res:"กี", desc:"Gii"}],
+                      vocab: [{w:"ไก่", m:"雞"}, {w:"กิน", m:"吃"}] },
+                    { char: "จ", rom: "j", name: "Jo Jan (盤子)", memo: "像盤子。發音像 J。", 
+                      combos: [{v:"-า", ex:"จ + า", res:"จา", desc:"Jaa"}, {v:"-ู", ex:"จ + -ู", res:"จู", desc:"Juu"}],
+                      vocab: [{w:"จริง", m:"真的"}, {w:"ใจ", m:"心"}] },
+                    { char: "ด", rom: "d", name: "Do Dek (小孩)", memo: "小孩蜷縮在裡面。", vocab: [{w:"ดู", m:"看"}, {w:"ดี", m:"好"}] },
+                    { char: "ต", rom: "t", name: "To Tao (烏龜)", memo: "頭上有凹痕(龜殼)。", vocab: [{w:"ตา", m:"眼睛/外公"}, {w:"โต", m:"大"}] },
+                    { char: "บ", rom: "b", name: "Bo Baimai (葉子)", memo: "像葉子形狀。", vocab: [{w:"บ้าน", m:"家"}, {w:"บิน", m:"飛"}] },
+                    { char: "ป", rom: "p", name: "Po Pla (魚)", memo: "魚尾巴長長的。", vocab: [{w:"ไป", m:"去"}, {w:"ปี", m:"年"}] },
+                    { char: "อ", rom: "-", name: "O Ang (水盆)", memo: "零聲母，或是當母音用。", vocab: [{w:"ออก", m:"出"}, {w:"อ่าน", m:"讀"}] }
+                ],
+                high: [
+                    { char: "ข", rom: "kh", name: "Kho Khai (蛋)", memo: "蛋破殼捲起來。高子音(上揚)。", 
+                      combos: [{v:"-า", ex:"ข + า", res:"ขา", desc:"腿 (上聲)"}],
+                      vocab: [{w:"เขา", m:"他/山"}, {w:"ขาย", m:"賣"}] },
+                    { char: "ฉ", rom: "ch", name: "Cho Ching (鈸)", memo: "像樂器鈸。", vocab: [{w:"ฉัน", m:"我"}, {w:"ฉีก", m:"撕"}] },
+                    { char: "ถ", rom: "th", name: "Tho Thung (袋子)", memo: "袋口束起來。", vocab: [{w:"ถุง", m:"袋子"}, {w:"ถูก", m:"便宜"}] },
+                    { char: "ผ", rom: "ph", name: "Pho Phueng (蜜蜂)", memo: "中間尖尖像蜜蜂刺。", vocab: [{w:"ผี", m:"鬼"}, {w:"ผ้า", m:"布"}] },
+                    { char: "ฝ", rom: "f", name: "Fo Fa (蓋子)", memo: "像蜜蜂但尾巴長。", vocab: [{w:"ฝน", m:"雨"}, {w:"ฝัน", m:"夢"}] },
+                    { char: "ส", rom: "s", name: "So Sua (老虎)", memo: "老虎尾巴翹起來。", vocab: [{w:"สวย", m:"漂亮"}, {w:"สี", m:"顏色"}] },
+                    { char: "ห", rom: "h", name: "Ho Hip (箱子)", memo: "像有蓋子的箱子。", vocab: [{w:"หมา", m:"狗"}, {w:"หู", m:"耳朵"}] }
+                ],
+                low: [
+                    { char: "ค", rom: "kh", name: "Kho Khwai (水牛)", memo: "水牛角張開。低子音(平)。", 
+                      combos: [{v:"-า", ex:"ค + า", res:"คา", desc:"Khaa (平聲)"}],
+                      vocab: [{w:"คน", m:"人"}, {w:"คิด", m:"想"}] },
+                    { char: "ง", rom: "ng", name: "Ngo Ngu (蛇)", memo: "像蛇的尾巴。", vocab: [{w:"งู", m:"蛇"}, {w:"งาน", m:"工作"}] },
+                    { char: "ช", rom: "ch", name: "Cho Chang (象)", memo: "大象尾巴翹起來。", vocab: [{w:"ช้า", m:"慢"}, {w:"ชอบ", m:"喜歡"}] },
+                    { char: "ซ", rom: "s", name: "So So (鏈子)", memo: "像鏈子斷開。", vocab: [{w:"ซื้อ", m:"買"}, {w:"ซ้าย", m:"左"}] },
+                    { char: "ท", rom: "th", name: "Tho Thahan (軍人)", memo: "軍人站直直。", vocab: [{w:"ทำ", m:"做"}, {w:"ที่", m:"在"}] },
+                    { char: "น", rom: "n", name: "No Nu (老鼠)", memo: "老鼠尾巴捲捲。", vocab: [{w:"นาน", m:"久"}, {w:"น้ำ", m:"水"}] },
+                    { char: "พ", rom: "ph", name: "Pho Phan (盤)", memo: "盤子外擴，中間尖尖。", vocab: [{w:"พ่อ", m:"爸爸"}, {w:"พูด", m:"說"}] },
+                    { char: "ฟ", rom: "f", name: "Fo Fan (牙齒)", memo: "像盤子但尾巴長。", vocab: [{w:"ไฟ", m:"火"}, {w:"ฟัง", m:"聽"}] },
+                    { char: "ม", rom: "m", name: "Mo Ma (馬)", memo: "像馬低頭。", 
+                      combos: [{v:"-า", ex:"ม + า", res:"มา", desc:"來 (Maa)"}, {v:"-ี", ex:"ม + -ี", res:"มี", desc:"有 (Mii)"}],
+                      vocab: [{w:"มา", m:"來"}, {w:"ไม่", m:"不"}] },
+                    { char: "ย", rom: "y", name: "Yo Yak (巨人)", memo: "巨人的獠牙。", vocab: [{w:"ยา", m:"藥"}, {w:"ยาก", m:"難"}] },
+                    { char: "ร", rom: "r", name: "Ro Rua (船)", memo: "船的形狀。", vocab: [{w:"รถ", m:"車"}, {w:"รัก", m:"愛"}] },
+                    { char: "ล", rom: "l", name: "Lo Ling (猴)", memo: "猴子尾巴。", vocab: [{w:"ลด", m:"減價"}, {w:"ลูก", m:"孩子"}] },
+                    { char: "ว", rom: "w", name: "Wo Waen (戒指)", memo: "戒指的圓圈。", vocab: [{w:"วัน", m:"日"}, {w:"วิ่ง", m:"跑"}] },
+                    { char: "ฮ", rom: "h", name: "Ho Nok-huk (貓頭鷹)", memo: "大眼睛的貓頭鷹。", vocab: [{w:"ฮัลโหล", m:"Hello"}, {w:"ฮา", m:"哈(笑聲)"}] }
+                ],
+                vowels: [
+                    { char: "-ะ", rom: "a", name: "Sara A (短)", memo: "短促的阿。", vocab: [{w:"จะ", m:"將要"}, {w:"กะ", m:"估計"}] },
+                    { char: "-า", rom: "aa", name: "Sara Aa (長)", memo: "像一根拐杖，放在右邊。", 
+                      combos: [{v:"ต", ex:"ต + า", res:"ตา", desc:"Taa"}, {v:"ม", ex:"ม + า", res:"มา", desc:"Maa"}],
+                      vocab: [{w:"มา", m:"來"}, {w:"ขา", m:"腿"}] },
+                    { char: "-ิ", rom: "i", name: "Sara I (短)", memo: "上面的帽子，沒有尾巴。", vocab: [{w:"กิน", m:"吃"}, {w:"บิน", m:"飛"}] },
+                    { char: "-ี", rom: "ii", name: "Sara Ii (長)", memo: "帽子長出一條尾巴。", vocab: [{w:"ดี", m:"好"}, {w:"มี", m:"有"}] },
+                    { char: "-ึ", rom: "ue", name: "Sara Ue (短)", memo: "上面有個圓圈。", vocab: [{w:"ถึง", m:"到達"}, {w:"ขึ้น", m:"上升"}] },
+                    { char: "-ื", rom: "uue", name: "Sara Uue (長)", memo: "上面有兩條直線。", vocab: [{w:"มือ", m:"手"}, {w:"ถือ", m:"拿"}] },
+                    { char: "-ุ", rom: "u", name: "Sara U (短)", memo: "下面的小蝌蚪。", vocab: [{w:"ทุก", m:"每"}, {w:"สุข", m:"快樂"}] },
+                    { char: "-ู", rom: "uu", name: "Sara Uu (長)", memo: "下面的大蝌蚪。", vocab: [{w:"ดู", m:"看"}, {w:"งู", m:"蛇"}] },
+                    { char: "เ-", rom: "e", name: "Sara E", memo: "寫在左邊的高柱子。", 
+                      combos: [{v:"ท", ex:"เ + ท", res:"เท", desc:"Thee"}, {v:"ก", ex:"เ + ก", res:"เก", desc:"Ke"}],
+                      vocab: [{w:"เท", m:"倒"}, {w:"เก", m:"頑皮"}] },
+                    { char: "แ-", rom: "ae", name: "Sara Ae", memo: "兩根柱子。", vocab: [{w:"แม่", m:"媽媽"}, {w:"แพง", m:"貴"}] },
+                    { char: "โ-", rom: "o", name: "Sara O", memo: "比誰都高，頭向內彎。", vocab: [{w:"โต", m:"大"}, {w:"โมโห", m:"生氣"}] },
+                    { char: "ไ-", rom: "ai", name: "Sara Ai", memo: "發音像'愛'，寫在左邊。", vocab: [{w:"ไป", m:"去"}, {w:"ไม่", m:"不"}] }
+                ]
+            },
+            kr: {
+                cons: [
+                    { char: "ㄱ", rom: "g/k", name: "Gi-yeok", type: "base", memo: "手槍形狀。舌根堵住喉嚨。", 
+                      combos: [{v:"ㅏ", ex:"ㄱ + ㅏ", res:"가", desc:"Ga"}, {v:"ㅗ", ex:"ㄱ + ㅗ", res:"고", desc:"Go"}],
+                      vocab: [{w:"가방", m:"包包"}, {w:"고기", m:"肉"}] },
+                    { char: "ㄴ", rom: "n", name: "Ni-eun", type: "base", memo: "舌尖頂上 N。", 
+                      combos: [{v:"ㅏ", ex:"ㄴ + ㅏ", res:"나", desc:"Na"}, {v:"ㅗ", ex:"ㄴ + ㅗ", res:"노", desc:"No"}],
+                      vocab: [{w:"나", m:"我"}, {w:"눈", m:"眼睛"}] },
+                    { char: "ㄷ", rom: "d/t", name: "Di-geut", type: "base", memo: "舌頭被封住 D。", vocab: [{w:"다", m:"全部"}, {w:"도", m:"島"}] },
+                    { char: "ㄹ", rom: "r/l", name: "Ri-eul", type: "base", memo: "蛇行的 R/L。", vocab: [{w:"라디오", m:"收音機"}, {w:"우리", m:"我們"}] },
+                    { char: "ㅁ", rom: "m", name: "Mi-eum", type: "base", memo: "嘴巴閉合 M。", 
+                      combos: [{v:"ㅗ", ex:"ㅁ + ㅗ", res:"모", desc:"Mo"}, {v:"ㅜ", ex:"ㅁ + ㅜ", res:"무", desc:"Mu"}],
+                      vocab: [{w:"모자", m:"帽子"}, {w:"몸", m:"身體"}] },
+                    { char: "ㅂ", rom: "b/p", name: "Bi-eup", type: "base", memo: "水桶裝水 B。", vocab: [{w:"바나나", m:"香蕉"}, {w:"비", m:"雨"}] },
+                    { char: "ㅅ", rom: "s", name: "Si-ot", type: "base", memo: "人站立/牙齒 S。", vocab: [{w:"사과", m:"蘋果"}, {w:"소", m:"牛"}] },
+                    { char: "ㅇ", rom: "ng/-", name: "I-eung", type: "base", memo: "空心圓/喉嚨。字首不發音。", vocab: [{w:"우유", m:"牛奶"}, {w:"아이", m:"小孩"}] },
+                    { char: "ㅈ", rom: "j", name: "Ji-eut", type: "base", memo: "ㅅ加一橫 J。", vocab: [{w:"지도", m:"地圖"}, {w:"자", m:"尺"}] },
+                    
+                    // 激音
+                    { char: "ㅊ", rom: "ch", name: "Chi-eut", type: "asp", memo: "ㅈ加一橫，噴氣 Ch。", vocab: [{w:"차", m:"車"}, {w:"치마", m:"裙子"}] },
+                    { char: "ㅋ", rom: "k", name: "Khi-euk", type: "asp", memo: "ㄱ噴氣 K。", vocab: [{w:"코", m:"鼻子"}, {w:"키", m:"身高"}] },
+                    { char: "ㅌ", rom: "t", name: "Thi-eut", type: "asp", memo: "ㄷ噴氣 T。", vocab: [{w:"타다", m:"搭乘"}, {w:"토마토", m:"番茄"}] },
+                    { char: "ㅍ", rom: "p", name: "Phi-eup", type: "asp", memo: "ㅁ噴氣 P。", vocab: [{w:"파", m:"蔥"}, {w:"포도", m:"葡萄"}] },
+                    { char: "ㅎ", rom: "h", name: "Hi-eut", type: "asp", memo: "戴帽子的人 H。", vocab: [{w:"하나", m:"一"}, {w:"휴지", m:"衛生紙"}] },
+                    
+                    // 緊音
+                    { char: "ㄲ", rom: "kk", name: "Sang-Giyeok", type: "tense", memo: "用力 G。", vocab: [{w:"꼬리", m:"尾巴"}, {w:"꿀", m:"蜂蜜"}] },
+                    { char: "ㄸ", rom: "tt", name: "Sang-Digeut", type: "tense", memo: "用力 D。", vocab: [{w:"딸기", m:"草莓"}, {w:"떡", m:"年糕"}] },
+                    { char: "ㅃ", rom: "pp", name: "Sang-Bieup", type: "tense", memo: "用力 B。", vocab: [{w:"빵", m:"麵包"}, {w:"뽀뽀", m:"親親"}] },
+                    { char: "ㅆ", rom: "ss", name: "Sang-Siot", type: "tense", memo: "用力 S。", vocab: [{w:"쓰다", m:"寫"}, {w:"싸다", m:"便宜"}] },
+                    { char: "ㅉ", rom: "jj", name: "Sang-Jieut", type: "tense", memo: "用力 J。", vocab: [{w:"짜다", m:"鹹"}, {w:"찌개", m:"湯鍋"}] }
+                ],
+                vowels: [
+                    { char: "ㅏ", rom: "a", name: "A", memo: "向右(陽)，張大嘴。", 
+                      combos: [{v:"ㅅ", ex:"ㅅ + ㅏ", res:"사", desc:"Sa"}], vocab: [{w:"차", m:"車"}, {w:"나", m:"我"}] },
+                    { char: "ㅑ", rom: "ya", name: "Ya", memo: "多一橫加Y音。", vocab: [{w:"야구", m:"棒球"}, {w:"약", m:"藥"}] },
+                    { char: "ㅓ", rom: "eo", name: "Eo", memo: "向左(陰)，發'喔'。", vocab: [{w:"어머니", m:"母親"}, {w:"서울", m:"首爾"}] },
+                    { char: "ㅕ", rom: "yeo", name: "Yeo", memo: "多一橫加Y音。", vocab: [{w:"여자", m:"女人"}, {w:"여기", m:"這裡"}] },
+                    { char: "ㅗ", rom: "o", name: "O", memo: "向上(陽)，嘟嘴圓。", 
+                      combos: [{v:"ㅅ", ex:"ㅅ + ㅗ", res:"소", desc:"So"}], vocab: [{w:"오리", m:"鴨子"}, {w:"오늘", m:"今天"}] },
+                    { char: "ㅛ", rom: "yo", name: "Yo", memo: "多一橫加Y音。", vocab: [{w:"요리", m:"料理"}, {w:"교실", m:"教室"}] },
+                    { char: "ㅜ", rom: "u", name: "U", memo: "向下(陰)，嘟嘴扁。", vocab: [{w:"구두", m:"皮鞋"}, {w:"우리", m:"我們"}] },
+                    { char: "ㅠ", rom: "yu", name: "Yu", memo: "多一橫加Y音。", vocab: [{w:"우유", m:"牛奶"}, {w:"유리", m:"玻璃"}] },
+                    { char: "ㅡ", rom: "eu", name: "Eu", memo: "地平線，咬牙發'額'。", vocab: [{w:"그", m:"那"}, {w:"크다", m:"大"}] },
+                    { char: "ㅣ", rom: "i", name: "I", memo: "人站立，發'一'。", vocab: [{w:"이", m:"牙齒/二"}, {w:"비", m:"雨"}] },
+                    // 複合
+                    { char: "ㅐ", rom: "ae", name: "Ae", memo: "ㅏ+ㅣ。", vocab: [{w:"개", m:"狗"}, {w:"해", m:"太陽"}] },
+                    { char: "ㅔ", rom: "e", name: "E", memo: "ㅓ+ㅣ。", vocab: [{w:"네", m:"是"}, {w:"셋", m:"三"}] },
+                    { char: "ㅘ", rom: "wa", name: "Wa", memo: "ㅗ+ㅏ。", vocab: [{w:"과자", m:"餅乾"}, {w:"와", m:"來"}] },
+                    { char: "ㅝ", rom: "wo", name: "Wo", memo: "ㅜ+ㅓ。", vocab: [{w:"원", m:"韓元"}, {w:"뭐", m:"什麼"}] }
+                ]
+            }
+        };
+
+        let currentLang = 'th';
+
+        // === 渲染邏輯 (Render Logic) ===
+        function render() {
+            // 泰語分區渲染
+            renderSection('th-mid-grid', DB.th.mid, 'th-mid');
+            renderSection('th-high-grid', DB.th.high, 'th-high');
+            renderSection('th-low-grid', DB.th.low, 'th-low');
+            renderSection('th-vowel-grid', DB.th.vowels, 'th-vowel');
+
+            // 韓語分區渲染
+            renderSection('kr-cons-grid', DB.kr.cons, 'kr');
+            renderSection('kr-vowel-grid', DB.kr.vowels, 'kr-vowel');
+        }
+
+        function renderSection(id, data, cssClassBase) {
+            const grid = document.getElementById(id);
+            grid.innerHTML = '';
+            data.forEach(item => {
+                // 自動判斷韓語 CSS 類別
+                let finalClass = cssClassBase;
+                if (cssClassBase === 'kr') {
+                    finalClass = 'kr-' + item.type;
+                }
+
+                const el = document.createElement('div');
+                el.className = `card ${finalClass}`;
+                el.innerHTML = `
+                    <div class="card-char">${item.char}</div>
+                    <div class="card-rom">${item.rom}</div>
+                `;
+                el.onclick = () => openModal(item, finalClass);
+                grid.appendChild(el);
+            });
+        }
+
+        // === Modal 邏輯 ===
+        function openModal(item, cssClass) {
+            const modal = document.getElementById('modal');
+            
+            // 1. 基礎資料
+            const charElem = document.getElementById('m-char');
+            charElem.innerText = item.char;
+            // 抓取卡片顏色設定給大字
+            charElem.className = `m-big-char ${cssClass}`; 
+
+            document.getElementById('m-name').innerText = item.name;
+            document.getElementById('m-type').innerText = item.type ? `分類: ${item.type}` : '基本字母';
+            
+            // 2. 記憶
+            document.getElementById('m-memo').innerText = item.memo;
+
+            // 3. 組合邏輯 (安全處理 + 自動生成)
+            const comboList = document.getElementById('m-combo-list');
+            comboList.innerHTML = '';
+            const comboLabel = document.getElementById('label-combo');
+
+            // 策略：如果有寫 combos，顯示。如果沒寫，韓語自動生成，泰語隱藏。
+            let displayCombos = item.combos || [];
+            
+            // 韓語自動生成邏輯 (若無手動設定)
+            if (displayCombos.length === 0 && currentLang === 'kr') {
+                if(item.type){ // 是子音
+                     displayCombos.push({ex: `${item.char} + ㅏ`, res: item.char + "ㅏ", desc: "與 A 組合"});
+                }
+            }
+
+            if (displayCombos.length > 0) {
+                comboLabel.style.display = 'block';
+                displayCombos.forEach(c => {
+                    // 處理泰語音調標記顯示
+                    let displayRes = c.res; 
+                    const row = document.createElement('div');
+                    row.className = 'combo-row';
+                    row.innerHTML = `
+                        <span>${c.ex}</span>
+                        <span class="combo-part">⮕</span>
+                        <span class="combo-result">${displayRes}</span>
+                        <span class="combo-desc">${c.desc || ''}</span>
+                    `;
+                    comboList.appendChild(row);
+                });
+            } else {
+                // 如果真的沒有組合邏輯，就隱藏該標題
+                comboLabel.style.display = 'none';
+            }
+
+            // 4. 單字
+            const vocabList = document.getElementById('m-vocab-list');
+            vocabList.innerHTML = '';
+            if (item.vocab) {
+                item.vocab.forEach(v => {
+                    const btn = document.createElement('div');
+                    btn.className = 'vocab-item';
+                    btn.onclick = () => playAudio(v.w);
+                    btn.innerHTML = `
+                        <div class="v-word">${v.w} 🔊</div>
+                        <div class="v-mean">${v.m}</div>
+                    `;
+                    vocabList.appendChild(btn);
+                });
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeModal(e) {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function setLang(lang) {
+            currentLang = lang;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+            document.getElementById(`${lang}-area`).classList.add('active');
+        }
+
+        function playAudio(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const ut = new SpeechSynthesisUtterance(text);
+                ut.lang = currentLang === 'th' ? 'th-TH' : 'ko-KR';
+                ut.rate = 0.8;
+                window.speechSynthesis.speak(ut);
+            }
+        }
+
+        // Init
+        render();
+
+    </script>
+</body>
+</html>
